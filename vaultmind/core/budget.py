@@ -10,21 +10,25 @@ from typing import List, Tuple
 logger = logging.getLogger(__name__)
 
 class ContextBudgetGuardian:
-    DEFAULT_MAX_BYTES = 48 * 1024 # 48 KiB
+    DEFAULT_MAX_BYTES = 48 * 1024 # 48 KiB (49,152 bytes)
     DEFAULT_WINDOW_CHARS = 12000
 
     @classmethod
     def enforce_byte_limit(cls, text: str, max_bytes: int = DEFAULT_MAX_BYTES) -> Tuple[str, bool]:
-        """Truncates text safely at UTF-8 boundary if it exceeds max_bytes."""
+        """Truncates text safely at UTF-8 boundary such that total returned text <= max_bytes."""
         raw_bytes = text.encode("utf-8")
         if len(raw_bytes) <= max_bytes:
             return text, False
 
+        warning = "\n\n[System Note: Content truncated due to context budget constraint. Use `read_document_window` to inspect subsequent sections.]"
+        warning_bytes = len(warning.encode("utf-8"))
+        avail_bytes = max(0, max_bytes - warning_bytes)
+
         # Truncate and decode safely with replace/ignore at boundary
-        truncated_bytes = raw_bytes[:max_bytes]
+        truncated_bytes = raw_bytes[:avail_bytes]
         safe_text = truncated_bytes.decode("utf-8", errors="ignore")
-        warning = "\n\n[System Note: Content truncated due to 48 KiB context budget constraint. Use `read_document_window` to inspect subsequent sections.]"
-        return safe_text + warning, True
+        result = safe_text + warning
+        return result, True
 
     @classmethod
     def extract_sliding_window(cls, full_text: str, hit_offset: int, window_chars: int = DEFAULT_WINDOW_CHARS) -> str:

@@ -4,7 +4,7 @@ Provides REST endpoints and SSE real-time streaming for UGREEN NAS Web Dashboard
 """
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.middleware.cors import CORSMSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import os
@@ -16,12 +16,12 @@ from vaultmind.agent.orchestrator import VaultMindOrchestrator
 
 app = FastAPI(
     title="VaultMind Local AI NAS Agent",
-    description="Zero-leakage, self-healing private knowledge base for UGREEN AI NAS",
+    description="Privacy-focused, self-healing knowledge base for UGREEN AI NAS",
     version="1.0.0"
 )
 
 app.add_middleware(
-    CORSMSMiddleware,
+    CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,7 +44,7 @@ def read_root():
     return {
         "app": "VaultMind",
         "status": "online",
-        "privacy": "100%_LOCAL",
+        "privacy": "LOCAL_EXECUTION",
         "docs_indexed": len(retriever.corpus)
     }
 
@@ -56,35 +56,35 @@ def execute_query(req: QueryRequest):
 
 @app.post("/api/index/sample")
 def index_sample_documents():
-    """Indexes pre-baked sample documents for demonstration."""
+    """Indexes verified mock contracts and invoices for reconciliation testing."""
     sample_docs = [
         {
-            "id": "apple_10k_p12",
-            "file_name": "Apple_2025_Annual_Report_10K.pdf",
-            "page": 12,
-            "content": "Services revenue grew 14% year-over-year to $96.2 billion, driven by strength in cloud services, payment services, and App Store subscriptions.",
-            "metadata": {"category": "financial_report"}
+            "id": "contract_design_2025",
+            "file_name": "Studio_Design_Agreement_2025.pdf",
+            "page": 1,
+            "content": "Section 4.1 Compensation: Client agrees to pay Provider a monthly flat fee of $2,400.00 USD (net, exclusive of applicable taxes) due by the 5th of each month.",
+            "metadata": {"category": "contract", "agreed_amount": 2400.0, "currency": "USD"}
         },
         {
-            "id": "tax_2025_w2",
-            "file_name": "Family_Tax_Return_2025_Verified.pdf",
-            "page": 3,
-            "content": "Total adjusted gross income for the fiscal year was recorded at $185,400. Deductions under mortgage interest and dependent care totaled $24,800.",
-            "metadata": {"category": "tax_documents"}
+            "id": "invoice_design_nov_2025",
+            "file_name": "Invoice_Design_Nov_2025.pdf",
+            "page": 1,
+            "content": "Invoice #INV-2025-1102. Billed to Studio Client. Total Amount Due: $2,640.00 USD (Includes $240.00 unapproved overtime adjustment). Payment Terms: Net 15.",
+            "metadata": {"category": "invoice", "billed_amount": 2640.0, "currency": "USD"}
         },
         {
-            "id": "python_guide_p45",
-            "file_name": "Python_312_Standard_Library.pdf",
-            "page": 45,
-            "content": "The sqlite3 module provides an SQL interface compliant with DB-API 2.0. In version 3.12, load_extension support for sqlite-vec is enabled by default.",
-            "metadata": {"category": "technical_manual"}
+            "id": "invoice_cloud_nov_2025",
+            "file_name": "Invoice_CloudHosting_Nov_2025.pdf",
+            "page": 1,
+            "content": "Invoice #INV-CLOUD-9941. Dedicated Storage Server: $350.00 USD. Status: Missing matching vendor Master Services Agreement in authorized directory.",
+            "metadata": {"category": "invoice", "billed_amount": 350.0, "currency": "USD", "status": "needs_review"}
         }
     ]
     retriever.index_documents(sample_docs)
     return {
         "status": "success",
         "indexed_count": len(sample_docs),
-        "message": "VaultMind local index updated successfully."
+        "message": "VaultMind local index updated with mock reconciliation fixtures."
     }
 
 @app.get("/api/health")

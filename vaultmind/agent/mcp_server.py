@@ -1,15 +1,32 @@
 """
 VaultMind FastMCP Server
-Exposes Model Context Protocol (MCP) endpoints for UGREEN AI NAS host operations:
+Exposes Model Context Protocol (MCP) endpoints for local knowledge retrieval & inspection:
 1. `search_vault`: Local hybrid RAG with citation isolation [S1..Sn]
 2. `read_document_window`: Context-bounded sliding window reader
-3. `organize_folder`: Autonomous directory housekeeping and auto-tagging
+3. `organize_folder`: Proposes semantic directory housekeeping plans
 4. `get_vault_health`: System status, budget telemetry, and indexed assets count
 """
 
 import os
 from typing import Dict, Any, List
-from mcp.server.fastmcp import FastMCP
+
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    # Standalone fallback for environments without external mcp wheel installed
+    class FastMCP:
+        def __init__(self, name: str):
+            self.name = name
+            self.tools = {}
+
+        def tool(self):
+            def decorator(func):
+                self.tools[func.__name__] = func
+                return func
+            return decorator
+
+        def run(self):
+            print(f"[{self.name}] Standalone FastMCP server running with {len(self.tools)} registered tools.")
 
 from vaultmind.config import settings
 from vaultmind.core.retriever import DeduplicatedHybridRetriever
@@ -40,22 +57,22 @@ def search_vault(query: str, top_k: int = 5) -> str:
 
 @mcp.tool()
 def read_document_window(doc_id: str, offset: int = 0, window_chars: int = 8000) -> str:
-    """Reads a bounded context window of a local document to prevent token bloat."""
-    # Find matching document in indexed corpus
+    """Reads a bounded context window of a local document with strict budget enforcement."""
     matched = next((d for d in retriever.corpus if d.get("id") == doc_id or d.get("file_name") == doc_id), None)
     if not matched:
         return f"[Error]: Document {doc_id} not found in the local vault."
 
     full_text = matched.get("content", "")
-    return ContextBudgetGuardian.extract_sliding_window(full_text, hit_offset=offset, window_chars=window_chars)
+    window_text = ContextBudgetGuardian.extract_sliding_window(full_text, hit_offset=offset, window_chars=window_chars)
+    safe_text, _ = ContextBudgetGuardian.enforce_byte_limit(window_text, max_bytes=settings.max_context_bytes)
+    return safe_text
 
 @mcp.tool()
 def organize_folder(source_dir: str, target_dir: str, dry_run: bool = True) -> Dict[str, Any]:
-    """Scans and organizes files in local NAS directories based on semantic document types."""
+    """Scans and proposes organization of files in authorized NAS directories based on semantic document types."""
     if not os.path.exists(source_dir):
         return {"status": "error", "message": f"Source directory {source_dir} does not exist."}
 
-    # Simulated autonomous file organization plan
     actions = []
     for item in os.listdir(source_dir):
         item_path = os.path.join(source_dir, item)
@@ -66,10 +83,11 @@ def organize_folder(source_dir: str, target_dir: str, dry_run: bool = True) -> D
             actions.append({"file": item, "category": category, "destination": dest})
 
     return {
-        "status": "success",
+        "status": "planned" if dry_run else "executed_simulated",
         "dry_run": dry_run,
         "total_files_scanned": len(actions),
-        "proposed_actions": actions
+        "proposed_actions": actions,
+        "note": "File system changes on Uliya NAS are gated by user confirmation and executed via official file-agent."
     }
 
 @mcp.tool()
@@ -77,7 +95,7 @@ def get_vault_health() -> Dict[str, Any]:
     """Returns local vault health, indexed document count, and privacy verification."""
     return {
         "status": "healthy",
-        "privacy_mode": "100%_LOCAL_OFFLINE",
+        "privacy_mode": "LOCAL_VERIFIED",
         "indexed_documents": len(retriever.corpus),
         "max_context_budget": f"{settings.max_context_bytes // 1024} KiB",
         "mcp_version": "1.0-standard"

@@ -6,6 +6,7 @@ Presents clean [S1], [S2] short tags to the model and maintains a verified inter
 
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from vaultmind.core.budget import ContextBudgetGuardian
 
 @dataclass
 class RetrievedChunk:
@@ -40,21 +41,32 @@ class CitationRegistry:
         return tag
 
     def format_passages(self, chunks: List[RetrievedChunk], max_bytes: int = 48 * 1024) -> str:
-        """Formats passages for the model with strict byte budget constraints."""
+        """Formats passages for the model with strict byte budget constraints.
+        Ensures chunks are only registered if they are actually included in the output.
+        """
         formatted_blocks = []
         accumulated_bytes = 0
 
         for chunk in chunks:
-            tag = self.register(chunk)
-            header = f"[{tag}] 《{chunk.file_name}》 Page {chunk.page}\n"
+            tag_candidate = f"S{self._counter}"
+            header = f"[{tag_candidate}] 《{chunk.file_name}》 Page {chunk.page}\n"
             body = chunk.content.strip() + "\n\n"
             block = header + body
             block_bytes = len(block.encode("utf-8"))
 
             if accumulated_bytes + block_bytes > max_bytes:
-                # Truncate if budget exceeded
+                # If even the first block exceeds max_bytes, apply sliding window truncation
+                if not formatted_blocks:
+                    header_bytes = len(header.encode("utf-8"))
+                    avail = max_bytes - header_bytes - 20
+                    if avail > 0:
+                        truncated_content, _ = ContextBudgetGuardian.enforce_byte_limit(chunk.content.strip(), max_bytes=avail)
+                        tag = self.register(chunk)
+                        block = f"[{tag}] 《{chunk.file_name}》 Page {chunk.page}\n{truncated_content}\n\n"
+                        formatted_blocks.append(block)
                 break
 
+            tag = self.register(chunk)
             formatted_blocks.append(block)
             accumulated_bytes += block_bytes
 
