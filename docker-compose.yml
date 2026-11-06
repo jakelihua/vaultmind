@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  vaultmind:
+    build: .
+    container_name: vaultmind-nas-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - VAULTMIND_MAX_CONTEXT_BYTES=49152
+      - VAULTMIND_RELATIVE_SCORE_RATIO=0.9
+    volumes:
+      - ./data:/data
