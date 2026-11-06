@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaultMind for Jira — Interactive Live Preview</title>
+  <style>
+    :root {
+      --primary: #0052CC;
+      --primary-hover: #0747A6;
+      --text: #172B4D;
+      --text-subtle: #6B778C;
+      --bg-neutral: #F4F5F7;
+      --border: #DFE1E6;
+      --card-bg: #FFFFFF;
+      --success: #36B37E;
+      --success-light: #E3FCEF;
+      --success-text: #006644;
+      --danger: #FF5630;
+      --danger-light: #FFEBE6;
+      --danger-text: #BF2600;
+      --warning: #FFAB00;
+      --warning-light: #FFFAE6;
+      --warning-text: #172B4D;
+      --tag-bg: #EBECF0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #FAFBFC;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* Top Jira Navbar */
+    .jira-nav {
+      height: 56px;
+      background: #0747A6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      color: #FFF;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .jira-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .jira-badge {
+      background: rgba(255,255,255,0.2);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .nav-links a {
+      color: #DEEBFF;
+      text-decoration: none;
+      font-size: 14px;
+      margin-left: 20px;
+      font-weight: 500;
+    }
+    .nav-links a:hover {
+      color: #FFF;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1280px;
+      margin: 24px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+
+    /* Left Issue Detail */
+    .issue-main {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 28px;
+    }
+    .issue-breadcrumbs {
+      font-size: 13px;
+      color: var(--text-subtle);
+      margin-bottom: 8px;
+    }
+    .issue-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .issue-desc {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* VaultMind Panel (Forge Plugin) */
+    .vaultmind-panel {
+      background: #FAFBFC;
+      border: 2px solid #4C9AFF;
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 20px;
+      position: relative;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .panel-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .panel-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .badge-awaiting { background: var(--tag-bg); color: var(--text-subtle); }
+    .badge-pending { background: #DEEBFF; color: #0747A6; }
+    .badge-approved { background: var(--success-light); color: var(--success-text); }
+    .badge-rejected { background: var(--danger-light); color: var(--danger-text); }
+
+    /* Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    .btn-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    /* Table */
+    .audit-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .audit-table th {
+      background: #F4F5F7;
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+    }
+    .audit-table td {
+      padding: 12px 14px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .pill-discrepancy { background: var(--danger-light); color: var(--danger-text); }
+    .pill-review { background: var(--warning-light); color: var(--warning-text); }
+    .pill-match { background: var(--success-light); color: var(--success-text); }
+
+    /* Citations */
+    .citations-box {
+      background: #F4F5F7;
+      border-left: 3px solid #0052CC;
+      padding: 12px 16px;
+      margin-top: 14px;
+      border-radius: 0 4px 4px 0;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .citations-box p {
+      margin-bottom: 4px;
+    }
+
+    /* Right Sidebar */
+    .sidebar-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .sidebar-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 8px 0;
+      border-bottom: 1px solid #F4F5F7;
+    }
+    .meta-label { color: var(--text-subtle); }
+    .meta-value { font-weight: 600; color: var(--text); }
+
+    .comment-feed {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+    .comment-item {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #0052CC;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .comment-body {
+      flex: 1;
+      background: #F4F5F7;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+    }
+    .comment-author {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Jira Header -->
+  <header class="jira-nav">
+    <div class="jira-logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M11.53 2c0 5.26-4.27 9.53-9.53 9.53V2h9.53zm0 9.87c0 5.26-4.27 9.53-9.53 9.53v-9.53h9.53zm10.47 0c0 5.26-4.27 9.53-9.53 9.53v-9.53h9.53z" fill="#FFF"/></svg>
+      <span>Jira Software</span>
+      <span class="jira-badge">Forge Powered</span>
+    </div>
+    <div class="nav-links">
+      <a href="https://github.com/jakelihua/vaultmind" target="_blank">GitHub Repository ↗</a>
+      <a href="https://codegeist2026.devpost.com/" target="_blank">Atlassian Codegeist ↗</a>
+      <a href="https://go.atlassian.com/cloud-dev" target="_blank">Claim Free Dev Cloud ↗</a>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <div class="container">
+    
+    <!-- Left Ticket -->
+    <div class="issue-main">
+      <div class="issue-breadcrumbs">FIN-OPERATIONS / FIN-108</div>
+      <h1 class="issue-title">Monthly Vendor Settlement & Invoice Reconciliation (Nov 2025)</h1>
+      <p class="issue-desc">
+        Review monthly contractor invoices and infrastructure hosting bills against signed Master Services Agreements and purchase orders before final treasury payment batch.
+      </p>
+
+      <!-- VaultMind Issue Panel -->
+      <div class="vaultmind-panel">
+        <div class="panel-header">
+          <div class="panel-brand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            VaultMind Autonomous Audit Panel
+          </div>
+          <span id="panelStatusBadge" class="panel-badge badge-awaiting">AWAITING AUDIT</span>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-subtle); margin-bottom: 16px;">
+          Autonomous agent reconciles vendor attachments against agreed contracts in Confluence and generates audit-ready financial receipts with strict byte budgets.
+        </p>
+
+        <!-- Initial Button State -->
+        <div id="initialAction">
+          <button class="btn btn-primary" onclick="runAudit()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Run VaultMind Reconciliation
+          </button>
+        </div>
+
+        <!-- Audit Result Container (Hidden at start) -->
+        <div id="auditResults" style="display: none;">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">
+            Audit Summary: <span style="color: #6B778C; font-weight: 400;">2 files reconciled · 1 verified discrepancy (+USD 240.00) · 1 missing contract</span>
+          </div>
+
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th>Invoice ID</th>
+                <th>Contract Ref</th>
+                <th>Billed</th>
+                <th>Agreed</th>
+                <th>Variance</th>
+                <th>Audit Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>INV-2025-1102</strong></td>
+                <td>AGR-2025-04</td>
+                <td>USD 2,640.00</td>
+                <td>USD 2,400.00</td>
+                <td style="color: var(--danger-text); font-weight: 700;">+USD 240.00</td>
+                <td><span class="pill pill-discrepancy">Discrepancy</span></td>
+              </tr>
+              <tr>
+                <td><strong>INV-CLOUD-9941</strong></td>
+                <td>PO-9941</td>
+                <td>USD 350.00</td>
+                <td>—</td>
+                <td>—</td>
+                <td><span class="pill pill-review">Needs Review</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="citations-box">
+            <p><strong>Deterministic Grounding & Evidence Citations:</strong></p>
+            <p>• <code>[S1]</code>: <em>Invoice_Design_Nov_2025.txt</em> — Total billed $2,640.00 (includes $240.00 unauthorized overtime adjustment).</p>
+            <p>• <code>[S2]</code>: <em>Studio_Agreement_2025.txt (Sec 4.1)</em> — Explicit retainer cap authorized at $2,400.00/mo flat fee.</p>
+            <p>• <code>[S3]</code>: <em>Invoice_CloudHosting_Nov_2025.txt</em> — No matching Master Services Agreement found in repository. Variance held blank per compliance policy.</p>
+          </div>
+
+          <div class="btn-actions" id="actionButtons">
+            <button class="btn btn-success" onclick="approveAudit()">
+              ✓ Approve Receipt & Writeback to Jira
+            </button>
+            <button class="btn btn-danger" onclick="rejectAudit()">
+              ✕ Flag Discrepancy & Reject
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Jira Activity Comments -->
+      <div class="comment-feed">
+        <h3 style="font-size: 14px; font-weight: 700; color: var(--text-subtle); margin-bottom: 12px;">ACTIVITY & COMMENTS</h3>
+        <div id="commentsList">
+          <div class="comment-item">
+            <div class="avatar" style="background: #6B778C;">JD</div>
+            <div class="comment-body">
+              <div class="comment-author">John Doe (Finance Manager)</div>
+              <div>Please reconcile the studio overtime charges before releasing the wire transfer.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Metadata -->
+    <div class="issue-sidebar">
+      <div class="sidebar-card">
+        <h3>Issue Details</h3>
+        <div class="meta-row">
+          <span class="meta-label">Status</span>
+          <span class="meta-value" style="color: #0052CC;">IN REVIEW</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Assignee</span>
+          <span class="meta-value">Wang Shunchi</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Reporter</span>
+          <span class="meta-value">Finance Ops</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Priority</span>
+          <span class="meta-value" style="color: #FF5630;">High</span>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Deployment Links</h3>
+        <div style="font-size: 13px; line-height: 1.8;">
+          <div>📦 <strong>Forge Package:</strong> Ready</div>
+          <div>🔗 <strong>Repo:</strong> <a href="https://github.com/jakelihua/vaultmind" target="_blank" style="color: #0052CC;">jakelihua/vaultmind</a></div>
+          <div>☁️ <strong>Atlassian Cloud:</strong> <a href="https://go.atlassian.com/cloud-dev" target="_blank" style="color: #0052CC;">go.atlassian.com/cloud-dev</a></div>
+          <div>🏆 <strong>Codegeist:</strong> $120,000 Devpost Track</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function runAudit() {
+      document.getElementById('initialAction').style.display = 'none';
+      const badge = document.getElementById('panelStatusBadge');
+      badge.className = 'panel-badge badge-pending';
+      badge.innerText = 'PENDING APPROVAL';
+      document.getElementById('auditResults').style.display = 'block';
+    }
+
+    function approveAudit() {
+      const badge = document.getElementById('panelStatusBadge');
+      badge.className = 'panel-badge badge-approved';
+      badge.innerText = 'APPROVED & SYNCED';
+      document.getElementById('actionButtons').style.display = 'none';
+
+      // Append automated comment
+      const feed = document.getElementById('commentsList');
+      const newComment = document.createElement('div');
+      newComment.className = 'comment-item';
+      newComment.innerHTML = `
+        <div class="avatar" style="background: #36B37E;">VM</div>
+        <div class="comment-body" style="background: #E3FCEF; border: 1px solid #ABF5D1;">
+          <div class="comment-author" style="color: #006644;">VaultMind Agent (Verified Audit)</div>
+          <div><strong>[Receipt Approved]:</strong> Monthly reconciliation verified. Retainer billed $2,640.00 against $2,400.00 base. Variance of <strong>+USD 240.00</strong> authorized. Cloud bill held for contract submission.</div>
+        </div>
+      `;
+      feed.appendChild(newComment);
+    }
+
+    function rejectAudit() {
+      const badge = document.getElementById('panelStatusBadge');
+      badge.className = 'panel-badge badge-rejected';
+      badge.innerText = 'REJECTED (DISCREPANCY)';
+      document.getElementById('actionButtons').style.display = 'none';
+
+      const feed = document.getElementById('commentsList');
+      const newComment = document.createElement('div');
+      newComment.className = 'comment-item';
+      newComment.innerHTML = `
+        <div class="avatar" style="background: #FF5630;">VM</div>
+        <div class="comment-body" style="background: #FFEBE6; border: 1px solid #FFBDAD;">
+          <div class="comment-author" style="color: #BF2600;">VaultMind Agent (Audit Flag)</div>
+          <div><strong>[Invoice Rejected]:</strong> Discrepancy of <strong>+USD 240.00</strong> exceeded agreed scope under AGR-2025-04. Sent back to contractor for credit note.</div>
+        </div>
+      `;
+      feed.appendChild(newComment);
+    }
+  </script>
+</body>
+</html>
