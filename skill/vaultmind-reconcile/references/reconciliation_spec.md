@@ -1,20 +1,21 @@
 # Reconciliation Business Specification
 
-## Core Business Logic
+## Core Business Logic & 3-Way Audit Taxonomy
 
-1. **Document Pairing**:
-   - Matches invoice documents to contracts by Vendor Name, Tax ID, or Explicit Agreement Reference number.
-   - Requires exact ISO 4217 currency match (e.g., USD to USD). Currency conversions are flagged for manual review.
+1. **Strict 3-Way Classification**:
+   - **`Match`**: Bilateral evidence located in both contract and invoice; billing period, currency code, and tax basis match; numerical variance is exactly USD 0.00.
+   - **`Discrepancy`**: Bilateral evidence located in both contract and invoice; billing period, currency code, and tax basis match; numerical variance is non-zero (e.g., USD +240.00).
+   - **`Needs Review`**: Any prerequisite is missing or ambiguous (e.g., no matching contract found within reviewed files, currency mismatch, unverified tax basis, or unreadable scan). In all `Needs Review` cases, **the numerical variance is left blank (`—`)** rather than calculated from incomplete data.
 
-2. **Numerical Variance Calculation**:
-   - `Variance = Billed Amount - Agreed Amount`
-   - Accounts for net amounts vs gross amounts based on explicitly stated tax terms.
-   - Any absolute variance greater than $0.00 is flagged as a `Discrepancy`.
+2. **Coverage & Missing Source Handling**:
+   - When an invoice cannot be tied to an agreement for the billing period, it is classified as `Needs Review` with missing evidence explicitly noted.
+   - Uncontracted invoices or batches containing only invoices naturally fall into `Needs Review`.
+   - If candidate search reached the 50-file limit, missing contracts are described specifically as "not found within reviewed files" to avoid claiming non-existence beyond the inspected boundary.
 
-3. **Coverage & Missing Source Handling**:
-   - If an invoice has no corresponding contract in the authorized folder, it is flagged as `Needs Review`.
-   - The system never fabricates or assumes missing contract terms.
+3. **Numerical Variance Calculation**:
+   - `Variance = Billed Amount - Agreed Amount` (only computed when bilateral evidence is verified).
+   - Accounts for net vs gross amounts based on explicitly stated tax terms (net exclusive vs tax inclusive).
 
 4. **Approval & Replay Boundary**:
-   - All write operations require user consent.
-   - Re-running reconciliation on the same directory yields deterministic results and avoids overwriting without confirmation.
+   - All disk write operations require explicit human approval before execution.
+   - Re-running reconciliation on the same directory inspects existing reports and asks for confirmation before updating, preventing unconfirmed overwrites.

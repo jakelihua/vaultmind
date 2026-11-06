@@ -26,9 +26,9 @@ Execute the multi-expert pipeline sequentially. Downstream steps must consume on
 
 Delegate directory inspection to `file-agent` calling action `ug-filesystem find`:
 
-`delegate --target file-agent --instruction 'Find contract and invoice documents within the user-authorized folder, matching supported document extensions without traversing beyond the specified scope.'`
+`delegate --target file-agent --instruction 'Find contract and invoice documents within the user-authorized folder, matching supported document extensions up to max-depth 3 and limit 50.'`
 
-The search scans candidate files matching supported extensions up to a maximum limit of 50 documents to prevent unconstrained traversals. If no results or zero matches are found, report the empty result to the user and stop execution immediately without querying unrelated directories.
+The search scans candidate files matching supported extensions up to a maximum depth of 3 and limit of 50 documents to prevent unconstrained traversals. If the 50-file limit is reached, annotate the coverage boundary. If no results or zero matches are found, report the empty result to the user and stop execution immediately without querying unrelated directories.
 
 ## Step 2: Cross-examine line items
 
@@ -36,11 +36,11 @@ Pass real upstream file paths to `document-agent` calling action `ug-document re
 
 `delegate --target document-agent --instruction 'Extract contract terms and invoice items from the discovered document paths, reconcile payable totals, currency codes, and tax rates, and return structured discrepancies.'`
 
-When a contract reference is missing or amounts diverge, mark the entry as needs review. Distinguish individual line-item statuses (verified, discrepancy, needs review) from agent delegation statuses.
+Apply the 3-way accounting audit taxonomy: mark entries as `Match` when bilateral terms align at zero variance; mark as `Discrepancy` when bilateral terms confirm a non-zero variance; mark as `Needs Review` with a blank variance when contract evidence is not found within reviewed files, tax basis is ambiguous, or currency diverges. Distinguish individual line-item statuses from agent delegation statuses.
 
 ## Step 3: User approval and report archiving
 
-Present the markdown Reconciliation Receipt preview and target save location to the user. Details of the receipt structure are documented in [receipt_format.md](references/receipt_format.md). Business matching rules, error recoveries, and project compliance disclosures are detailed in [reconciliation_spec.md](references/reconciliation_spec.md), [error_handling.md](references/error_handling.md), and [disclosures.md](references/disclosures.md).
+Present the markdown approved review receipt preview and target save location to the user. Details of the receipt structure are documented in [receipt_format.md](references/receipt_format.md). Business matching rules, error recoveries, and project compliance disclosures are detailed in [reconciliation_spec.md](references/reconciliation_spec.md), [error_handling.md](references/error_handling.md), and [disclosures.md](references/disclosures.md).
 
 Only after explicit user confirmation, delegate saving to `knowledge-agent` calling action `ug-knowledge save-text`:
 

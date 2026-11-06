@@ -7,8 +7,10 @@ Verifies:
 4. Query deduplication & RRF rank fusion
 5. Relative score ratio pruning (0.9x cutoff)
 6. Tri-state error handling
+7. Real synthetic file parsing & reconciliation fixture verification
 """
 
+import os
 import pytest
 from vaultmind.core.registry import CitationRegistry, RetrievedChunk
 from vaultmind.core.budget import ContextBudgetGuardian
@@ -129,3 +131,34 @@ def test_orchestrator_tri_state():
     resp_nomatch = orchestrator.answer_query("What is the secret server password?")
     assert resp_nomatch["status"] == "ZERO_RECORDS_FOUND"
     assert "Refusing to hallucinate" in resp_nomatch["answer"]
+
+def test_synthetic_fixture_reconciliation():
+    fixtures_dir = os.path.join(os.path.dirname(__file__), "fixtures")
+    assert os.path.exists(fixtures_dir), "Fixtures directory must exist"
+
+    docs = []
+    for fname in ["Studio_Agreement_2025.txt", "Invoice_Design_Nov_2025.txt", "Invoice_CloudHosting_Nov_2025.txt"]:
+        fpath = os.path.join(fixtures_dir, fname)
+        assert os.path.isfile(fpath), f"Fixture {fname} must exist"
+        with open(fpath, "r", encoding="utf-8") as f:
+            content = f.read()
+        docs.append({"id": fname, "file_name": fname, "page": 1, "content": content})
+
+    retriever = DeduplicatedHybridRetriever()
+    retriever.index_documents(docs)
+
+    # Query for contract retainer
+    contract_hits = retriever.retrieve("AGR-2025-04 monthly flat retainer fee")
+    assert len(contract_hits) >= 1
+    assert "2,400.00" in contract_hits[0].content
+
+    # Query for invoice total
+    invoice_hits = retriever.retrieve("INV-2025-1102 Total Amount Billed")
+    assert len(invoice_hits) >= 1
+    assert "2,640.00" in invoice_hits[0].content
+
+    # Query for missing contract PO-9941
+    missing_hits = retriever.retrieve("PO-9941")
+    # Only the cloud invoice contains PO-9941; no Agreement document contains it
+    po_agreements = [h for h in missing_hits if "Agreement" in h.file_name and "PO-9941" in h.content]
+    assert len(po_agreements) == 0

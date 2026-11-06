@@ -15,7 +15,6 @@ lib/
 lib64/
 parts/
 sdist/
-var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -27,8 +26,7 @@ htmlcov/
 venv/
 ENV/
 
-# Local data & logs
-data/
+# Local databases & run logs
 *.sqlite
 *.db
 *.log

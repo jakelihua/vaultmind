@@ -1,0 +1,15 @@
+COMMERCIAL INVOICE
+Invoice Number: INV-2025-1102
+Issue Date: November 30, 2025
+Billing Period: November 1, 2025 - November 30, 2025
+Vendor: Creative Design Partners Inc.
+Customer: Studio Alpha Media LLC
+Associated Contract Reference: AGR-2025-04
+Payment Terms: Net 30 days
+
+Line Item Description:
+1. Monthly UI/UX Retainer Fee: USD 2,400.00
+2. Expedited Weekend Design Support: USD 240.00
+
+Total Amount Billed: USD 2,640.00
+Tax Basis: Net exclusive

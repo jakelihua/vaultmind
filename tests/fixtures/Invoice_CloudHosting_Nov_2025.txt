@@ -1,0 +1,13 @@
+CLOUD INFRASTRUCTURE INVOICE
+Invoice Number: INV-CLOUD-9941
+Issue Date: November 28, 2025
+Billing Period: November 1, 2025 - November 30, 2025
+Vendor: Global HyperScale Hosting LLC
+Customer: Studio Alpha Media LLC
+Associated Contract Reference: PO-9941
+
+Line Item Description:
+1. Dedicated GPU Compute Instance (Cluster Node 4): USD 350.00
+
+Total Amount Billed: USD 350.00
+Tax Basis: Tax exempt
