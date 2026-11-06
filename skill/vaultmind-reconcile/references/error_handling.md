@@ -1,4 +1,4 @@
-# Error Handling & State Recovery
+# Delegation Statuses & State Recovery
 
 ## Delegation Error Recovery
 
@@ -14,7 +14,7 @@
    - If saving the report encounters a disk full or permission error, present the complete markdown report directly in the chat interface.
    - Never perform unverified overwrite actions on existing reports without confirmation.
 
-4. **Tri-State Delegation Mapping**:
+4. **Delegation Public Statuses Handling**:
    - `waiting_user`: Missing folder path or ambiguous contract selection.
    - `waiting_approval`: User confirmation required before writing to disk.
    - `cancelled`: User rejects file modification or aborts operation.

@@ -42,12 +42,16 @@ class CitationRegistry:
 
     def format_passages(self, chunks: List[RetrievedChunk], max_bytes: int = 48 * 1024) -> str:
         """Formats passages for the model with strict byte budget constraints.
-        Ensures chunks are only registered if they are actually included in the output.
+        Ensures chunks are only registered if they are non-empty and actually included in the output.
         """
         formatted_blocks = []
         accumulated_bytes = 0
 
         for chunk in chunks:
+            # Skip empty or whitespace-only chunks
+            if not chunk.content or not chunk.content.strip():
+                continue
+
             tag_candidate = f"S{self._counter}"
             header = f"[{tag_candidate}] 《{chunk.file_name}》 Page {chunk.page}\n"
             body = chunk.content.strip() + "\n\n"

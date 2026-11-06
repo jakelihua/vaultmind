@@ -1,6 +1,6 @@
 """
 Context Budget Guardian & Window Manager
-Guarantees tool outputs never exceed 48 KiB to prevent LLM context bloat or timeout.
+Guarantees tool outputs never exceed max_bytes to prevent LLM context bloat or timeout.
 Provides sliding window slicing around matched passage keywords.
 """
 
@@ -22,12 +22,21 @@ class ContextBudgetGuardian:
 
         warning = "\n\n[System Note: Content truncated due to context budget constraint. Use `read_document_window` to inspect subsequent sections.]"
         warning_bytes = len(warning.encode("utf-8"))
-        avail_bytes = max(0, max_bytes - warning_bytes)
 
-        # Truncate and decode safely with replace/ignore at boundary
-        truncated_bytes = raw_bytes[:avail_bytes]
-        safe_text = truncated_bytes.decode("utf-8", errors="ignore")
-        result = safe_text + warning
+        if max_bytes > warning_bytes:
+            avail_bytes = max_bytes - warning_bytes
+            truncated_bytes = raw_bytes[:avail_bytes]
+            safe_text = truncated_bytes.decode("utf-8", errors="ignore")
+            result = safe_text + warning
+        else:
+            # If max_bytes cannot even fit the warning, truncate raw text directly to max_bytes without warning
+            truncated_bytes = raw_bytes[:max_bytes]
+            result = truncated_bytes.decode("utf-8", errors="ignore")
+
+        # Guarantee strict invariant against UTF-8 re-encoding quirks
+        while len(result.encode("utf-8")) > max_bytes and len(result) > 0:
+            result = result[:-1]
+
         return result, True
 
     @classmethod

@@ -2,8 +2,8 @@
 Unit & Contract Tests for VaultMind Core Engine
 Verifies:
 1. [S1..Sn] Citation Isolation & Registry decoupling
-2. 48 KiB Context Budget Guardian (strict byte limit guarantee)
-3. Ghost citation prevention (no unrendered citations in manifest)
+2. 48 KiB Context Budget Guardian (strict byte limit guarantee across all ranges including small budgets)
+3. Ghost citation prevention (no unrendered or blank citations in manifest)
 4. Query deduplication & RRF rank fusion
 5. Relative score ratio pruning (0.9x cutoff)
 6. Tri-state error handling
@@ -19,56 +19,62 @@ def test_citation_isolation():
     registry = CitationRegistry()
     chunk1 = RetrievedChunk(
         doc_id="internal_doc_9981",
-        file_name="Studio_Contract_2025.pdf",
-        page=2,
-        content="Monthly retainer fee agreed is $2,400.00 USD."
+        file_name="Studio_Agreement_2025.txt",
+        page=1,
+        content="Monthly retainer fee agreed is USD 2,400.00."
     )
     chunk2 = RetrievedChunk(
         doc_id="internal_doc_9982",
-        file_name="Studio_Invoice_Nov.pdf",
+        file_name="Invoice_Design_Nov_2025.txt",
         page=1,
-        content="Total amount billed: $2,640.00 USD."
+        content="Total amount billed: USD 2,640.00."
     )
 
     formatted = registry.format_passages([chunk1, chunk2])
     # Model should ONLY see [S1] and [S2], never internal_doc_9981
-    assert "[S1] 《Studio_Contract_2025.pdf》 Page 2" in formatted
-    assert "[S2] 《Studio_Invoice_Nov.pdf》 Page 1" in formatted
+    assert "[S1] 《Studio_Agreement_2025.txt》 Page 1" in formatted
+    assert "[S2] 《Invoice_Design_Nov_2025.txt》 Page 1" in formatted
     assert "internal_doc_9981" not in formatted
 
     source1 = registry.get_source("S1")
     assert source1["doc_id"] == "internal_doc_9981"
-    assert source1["file_name"] == "Studio_Contract_2025.pdf"
+    assert source1["file_name"] == "Studio_Agreement_2025.txt"
 
 def test_context_budget_guardian_strict_limit():
-    # Test strict 48 KiB limit: total output bytes MUST be <= max_bytes
-    small_text = "Standard context"
+    # Test strict limit across various small and large byte limits
+    for max_bytes in [10, 50, 100, 200, 500, 48 * 1024]:
+        large_text = "ABCDEFGHIJ" * 5000
+        safe_text, truncated = ContextBudgetGuardian.enforce_byte_limit(large_text, max_bytes=max_bytes)
+        assert truncated
+        assert len(safe_text.encode("utf-8")) <= max_bytes
+
+    small_text = "Short text"
     safe, truncated = ContextBudgetGuardian.enforce_byte_limit(small_text, max_bytes=100)
     assert not truncated
     assert safe == small_text
 
-    max_bytes = 48 * 1024 # 49,152 bytes
-    large_text = "A" * 60000
-    safe_large, truncated = ContextBudgetGuardian.enforce_byte_limit(large_text, max_bytes=max_bytes)
-    assert truncated
-    assert len(safe_large.encode("utf-8")) <= max_bytes
-    assert "System Note: Content truncated" in safe_large
-
-def test_ghost_citation_prevention():
+def test_ghost_citation_prevention_and_empty_chunks():
     registry = CitationRegistry()
+    blank_chunk = RetrievedChunk(
+        doc_id="doc_blank",
+        file_name="Blank.txt",
+        page=1,
+        content="   \n  "
+    )
     huge_chunk = RetrievedChunk(
         doc_id="doc_huge",
-        file_name="Huge_Doc.pdf",
+        file_name="Huge_Doc.txt",
         page=1,
         content="H" * 100000
     )
-    # Give budget of only 500 bytes
-    formatted = registry.format_passages([huge_chunk], max_bytes=500)
+    # Give budget of only 500 bytes; blank chunk should be ignored entirely
+    formatted = registry.format_passages([blank_chunk, huge_chunk], max_bytes=500)
     assert len(formatted.encode("utf-8")) <= 500
     manifest = registry.dump_manifest()
-    # If the chunk was included (even truncated), citations count must match registry exactly
+    # Blank chunk was NOT registered; only huge_chunk was registered
     assert manifest["total_citations"] == 1
     assert "S1" in manifest["citations"]
+    assert manifest["citations"]["S1"]["doc_id"] == "doc_huge"
 
 def test_sliding_window():
     full_doc = "X" * 1000 + "TARGET_KEYWORD" + "Y" * 1000
@@ -91,8 +97,8 @@ def test_retriever_deduplication():
 def test_hybrid_rrf_and_relative_cutoff():
     retriever = DeduplicatedHybridRetriever(rrf_k=60, relative_cutoff=0.9)
     docs = [
-        {"id": "doc_1", "file_name": "Studio_Agreement.pdf", "page": 1, "content": "Design fee is fixed at $2,400 monthly."},
-        {"id": "doc_2", "file_name": "Studio_Invoice.pdf", "page": 1, "content": "Billed amount is $2,640 with overtime."},
+        {"id": "doc_1", "file_name": "Studio_Agreement.pdf", "page": 1, "content": "Design fee is fixed at USD 2,400 monthly."},
+        {"id": "doc_2", "file_name": "Studio_Invoice.pdf", "page": 1, "content": "Billed amount is USD 2,640 with overtime."},
         {"id": "doc_3", "file_name": "Cooking_Recipes.pdf", "page": 1, "content": "Bake chocolate cake at 350 degrees."}
     ]
     retriever.index_documents(docs)
